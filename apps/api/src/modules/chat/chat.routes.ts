@@ -1,10 +1,14 @@
 import { Router } from "express";
+import multer from "multer";
 import { createChannelSchema, createMessageSchema, addReactionSchema } from "@repo/shared-types";
 import { authenticate } from "../../middleware/authenticate";
 import { requireWorkspaceRole } from "../../middleware/requireRole";
 import { validateBody } from "../../middleware/validate";
 import { asyncHandler } from "../../lib/asyncHandler";
 import * as controller from "./chat.controller";
+
+// Same 25MB ceiling as the workspace Files and task-attachment uploaders.
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 25 * 1024 * 1024 } });
 
 export const chatRouter: Router = Router();
 chatRouter.use(authenticate);
@@ -24,3 +28,6 @@ chatRouter.patch("/messages/:id", asyncHandler(controller.editMessage));
 chatRouter.delete("/messages/:id", asyncHandler(controller.deleteMessage));
 chatRouter.post("/messages/:id/reactions", validateBody(addReactionSchema), asyncHandler(controller.addReaction));
 chatRouter.delete("/messages/:id/reactions/:emoji", asyncHandler(controller.removeReaction));
+
+chatRouter.post("/channels/:id/attachments", upload.single("file"), asyncHandler(controller.uploadAttachment));
+chatRouter.get("/message-attachments/:id/download", asyncHandler(controller.downloadAttachment));

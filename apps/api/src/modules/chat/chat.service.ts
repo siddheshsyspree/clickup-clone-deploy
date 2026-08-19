@@ -1,6 +1,7 @@
 import { prisma } from "../../lib/prisma";
-import { NotFoundError, ForbiddenError } from "../../lib/errors";
+import { NotFoundError, ForbiddenError, BadRequestError } from "../../lib/errors";
 import { emitToChannel } from "../../sockets";
+import { storageProvider } from "../../lib/storage";
 import { createNotification } from "../notifications/notification.service";
 import type { CreateChannelInput, CreateMessageInput } from "@repo/shared-types";
 
@@ -84,9 +85,27 @@ export async function listMessages(channelId: string, userId: string, cursor?: s
 
 export async function createMessage(channelId: string, authorId: string, input: CreateMessageInput) {
   await assertMember(channelId, authorId);
+  if (!input.content?.trim() && !input.attachments?.length) {
+    throw new BadRequestError("Message must include text or an attachment");
+  }
 
   const message = await prisma.message.create({
-    data: { channelId, authorId, content: input.content, parentId: input.parentId },
+    data: {
+      channelId,
+      authorId,
+      content: input.content ?? "",
+      parentId: input.parentId,
+      attachments: input.attachments?.length
+        ? {
+            create: input.attachments.map((a) => ({
+              fileName: a.fileName,
+              fileUrl: a.fileUrl,
+              fileSize: a.fileSize,
+              mimeType: a.mimeType,
+            })),
+          }
+        : undefined,
+    },
     include: MESSAGE_INCLUDE,
   });
 
@@ -150,6 +169,30 @@ export async function addReaction(messageId: string, userId: string, emoji: stri
   const updated = await prisma.message.findUnique({ where: { id: messageId }, include: MESSAGE_INCLUDE });
   emitToChannel(message.channelId, "message:reaction", updated);
   return updated;
+}
+
+/** Stages a file for a not-yet-sent message — nothing is written to the DB here, the caller attaches the returned payload when it actually posts the message. */
+export async function uploadAttachment(
+  channelId: string,
+  userId: string,
+  file: { originalname: string; buffer: Buffer; size: number; mimetype: string },
+) {
+  await assertMember(channelId, userId);
+  const stored = await storageProvider.save(file.originalname, file.buffer);
+  return { fileName: file.originalname, fileUrl: stored.url, fileSize: file.size, mimeType: file.mimetype };
+}
+
+export async function readAttachmentForUser(attachmentId: string, userId: string) {
+  const attachment = await prisma.messageAttachment.findUnique({
+    where: { id: attachmentId },
+    include: { message: { select: { channelId: true } } },
+  });
+  if (!attachment) throw new NotFoundError("Attachment not found");
+  await assertMember(attachment.message.channelId, userId);
+
+  const key = attachment.fileUrl.replace(/^\/uploads\//, "");
+  const buffer = await storageProvider.read(key);
+  return { buffer, mimeType: attachment.mimeType, name: attachment.fileName };
 }
 
 export async function removeReaction(messageId: string, userId: string, emoji: string) {

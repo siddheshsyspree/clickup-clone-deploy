@@ -1,15 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getSocket } from "@/lib/socket";
 import { useAuthStore } from "@/stores/auth-store";
 import type { TaskSummary } from "@/lib/queries/tasks";
+import type { Notification } from "@/lib/queries/notifications";
 
 export function useSocketSync(workspaceId: string) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   useEffect(() => {
     if (!accessToken) return;
@@ -29,10 +32,14 @@ export function useSocketSync(workspaceId: string) {
     const onTaskDeleted = () => {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     };
-    const onNotification = (n: { title: string }) => {
+    const onNotification = (n: Notification) => {
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard", workspaceId] });
-      toast(n.title);
+      // Only chat notifications carry enough info (workspace + channel) to jump
+      // straight to the conversation without an extra lookup — other entity
+      // types just mark read for now.
+      const chatHref = n.entityType === "Channel" && n.workspaceId ? `/workspace/${n.workspaceId}/chat/${n.entityId}` : null;
+      toast(n.title, chatHref ? { action: { label: "View", onClick: () => router.push(chatHref) } } : undefined);
     };
     const onCommentChange = (comment: { taskId?: string }) => {
       if (comment?.taskId) queryClient.invalidateQueries({ queryKey: ["task", comment.taskId] });

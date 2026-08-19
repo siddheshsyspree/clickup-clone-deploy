@@ -9,9 +9,18 @@ export const createChannelSchema = z.object({
 });
 export type CreateChannelInput = z.infer<typeof createChannelSchema>;
 
+export const messageAttachmentInputSchema = z.object({
+  fileName: z.string().min(1).max(255),
+  fileUrl: z.string().min(1),
+  fileSize: z.number().int().nonnegative(),
+  mimeType: z.string().min(1),
+});
+export type MessageAttachmentInput = z.infer<typeof messageAttachmentInputSchema>;
+
 export const createMessageSchema = z.object({
-  content: z.string().min(1).max(4000),
+  content: z.string().max(4000).default(""),
   parentId: z.string().optional(),
+  attachments: z.array(messageAttachmentInputSchema).max(10).optional(),
 });
 export type CreateMessageInput = z.infer<typeof createMessageSchema>;
 

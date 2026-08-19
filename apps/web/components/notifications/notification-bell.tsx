@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDistanceToNow } from "date-fns";
+import { useRouter } from "next/navigation";
 import { Bell, CheckCheck } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -10,11 +11,12 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { listNotifications, markAllNotificationsRead, markNotificationRead } from "@/lib/queries/notifications";
+import { listNotifications, markAllNotificationsRead, markNotificationRead, type Notification } from "@/lib/queries/notifications";
 import { cn } from "@/lib/utils";
 
 export function NotificationBell() {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { data: notifications } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => listNotifications(),
@@ -28,9 +30,12 @@ export function NotificationBell() {
     queryClient.invalidateQueries({ queryKey: ["notifications"] });
   }
 
-  async function handleClick(id: string) {
-    await markNotificationRead(id);
+  async function handleClick(n: Notification) {
+    await markNotificationRead(n.id);
     queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    if (n.entityType === "Channel" && n.workspaceId) {
+      router.push(`/workspace/${n.workspaceId}/chat/${n.entityId}`);
+    }
   }
 
   return (
@@ -39,7 +44,9 @@ export function NotificationBell() {
         <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute right-1.5 top-1.5 flex h-2 w-2 rounded-full bg-primary" />
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
           )}
         </Button>
       </DropdownMenuTrigger>
@@ -60,7 +67,7 @@ export function NotificationBell() {
           {notifications?.map((n) => (
             <button
               key={n.id}
-              onClick={() => handleClick(n.id)}
+              onClick={() => handleClick(n)}
               className={cn(
                 "flex w-full flex-col gap-0.5 border-b border-border/60 px-3 py-2.5 text-left text-sm transition-colors last:border-b-0 hover:bg-accent",
                 !n.isRead && "bg-primary/5",

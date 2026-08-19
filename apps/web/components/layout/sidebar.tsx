@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { WorkspaceSwitcher } from "@/components/layout/workspace-switcher";
 import { SidebarTree } from "@/components/layout/sidebar-tree";
 import { listTree } from "@/lib/queries/hierarchy";
+import { listNotifications } from "@/lib/queries/notifications";
 import { useAuthStore } from "@/stores/auth-store";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { logout as logoutRequest } from "@/lib/queries/auth";
@@ -39,11 +40,13 @@ function NavLink({
   icon: Icon,
   label,
   active,
+  badge,
 }: {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   active: boolean;
+  badge?: number;
 }) {
   return (
     <Link
@@ -56,7 +59,12 @@ function NavLink({
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      <span className="truncate">{label}</span>
+      <span className="flex-1 truncate">{label}</span>
+      {!!badge && (
+        <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground">
+          {badge > 9 ? "9+" : badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -75,6 +83,15 @@ export function Sidebar({ workspaceId }: { workspaceId: string }) {
     queryFn: () => listTree(workspaceId),
   });
 
+  // Same query key as NotificationBell — react-query dedupes the fetch, this
+  // just reads the shared cache to mirror the count onto the Chat nav item.
+  const { data: notifications } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => listNotifications(),
+    refetchInterval: 60_000,
+  });
+  const unreadChatCount = notifications?.filter((n) => !n.isRead && n.entityType === "Channel").length ?? 0;
+
   const base = `/workspace/${workspaceId}`;
   const role = user?.workspaces.find((w) => w.id === workspaceId)?.role;
   const isAdmin = role === "OWNER" || role === "ADMIN";
@@ -87,7 +104,7 @@ export function Sidebar({ workspaceId }: { workspaceId: string }) {
     { href: `${base}/ai`, icon: Sparkles, label: "AI" },
     { href: `${base}/clients`, icon: Building2, label: "Clients" },
     { href: `${base}/teams`, icon: Users2, label: "Teams" },
-    { href: `${base}/chat`, icon: MessagesSquare, label: "Chat" },
+    { href: `${base}/chat`, icon: MessagesSquare, label: "Chat", badge: unreadChatCount },
     { href: `${base}/meetings`, icon: CalendarClock, label: "Meetings" },
     ...(isAdmin ? [{ href: `${base}/admin`, icon: ShieldCheck, label: "Admin" }] : []),
   ];
