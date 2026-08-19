@@ -3,24 +3,29 @@
 import { use, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { FileText, Hash, Lock, Paperclip, Send, X } from "lucide-react";
+import { FileText, Hash, Lock, Paperclip, Send, SmilePlus, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MessageItem } from "@/components/chat/message-item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { listChannels, listMessages, sendMessage, uploadChatAttachment, type MessageAttachment } from "@/lib/queries/chat";
+import { listNotifications, markNotificationRead } from "@/lib/queries/notifications";
 import { getSocket } from "@/lib/socket";
 import { useAuthStore } from "@/stores/auth-store";
 import { ApiError } from "@/lib/api-client";
 
 type PendingAttachment = Omit<MessageAttachment, "id"> & { tempId: string };
 
+const COMPOSER_EMOJIS = ["👍", "❤️", "😂", "🎉", "😮", "😢", "🙏", "🔥", "👀", "✅"];
+
 export default function ChannelPage({ params }: { params: Promise<{ workspaceId: string; channelId: string }> }) {
   const { workspaceId, channelId } = use(params);
   const [content, setContent] = useState("");
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const queryClient = useQueryClient();
   const bottomRef = useRef<HTMLDivElement>(null);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -36,6 +41,18 @@ export default function ChannelPage({ params }: { params: Promise<{ workspaceId:
     queryKey: ["messages", channelId],
     queryFn: () => listMessages(channelId),
   });
+
+  // Shares the bell's own cache — opening a conversation should clear every
+  // unread notification for it, not just the one you happened to click to
+  // get here (you might have arrived via the sidebar instead of the bell).
+  const { data: notifications } = useQuery({ queryKey: ["notifications"], queryFn: () => listNotifications() });
+  useEffect(() => {
+    const unread = notifications?.filter((n) => !n.isRead && n.entityType === "Channel" && n.entityId === channelId);
+    if (!unread?.length) return;
+    Promise.all(unread.map((n) => markNotificationRead(n.id))).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    });
+  }, [channelId, notifications, queryClient]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -137,43 +154,24 @@ export default function ChannelPage({ params }: { params: Promise<{ workspaceId:
         ))}
         <div ref={bottomRef} />
       </div>
-      <div className="border-t border-border p-3">
-        {!!pendingAttachments.length && (
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {pendingAttachments.map((a) => (
-              <span key={a.tempId} className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/60 py-1 pl-2 pr-1 text-xs">
-                <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <span className="max-w-[10rem] truncate">{a.fileName}</span>
-                <button onClick={() => removePending(a.tempId)} className="rounded p-0.5 text-muted-foreground hover:bg-accent" aria-label={`Remove ${a.fileName}`}>
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
-        <div className="flex items-end gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            className="hidden"
-            onChange={(e) => {
-              handleFilePick(e.target.files);
-              e.target.value = "";
-            }}
-          />
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            className="shrink-0"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            aria-label="Attach file"
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
+      <div className="p-3">
+        <div className="rounded-2xl border border-border bg-card shadow-soft">
+          {!!pendingAttachments.length && (
+            <div className="flex flex-wrap gap-1.5 px-3 pt-3">
+              {pendingAttachments.map((a) => (
+                <span key={a.tempId} className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/60 py-1 pl-2 pr-1 text-xs">
+                  <FileText className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span className="max-w-[10rem] truncate">{a.fileName}</span>
+                  <button onClick={() => removePending(a.tempId)} className="rounded p-0.5 text-muted-foreground hover:bg-accent" aria-label={`Remove ${a.fileName}`}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
           <textarea
+            ref={textareaRef}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={(e) => {
@@ -182,13 +180,76 @@ export default function ChannelPage({ params }: { params: Promise<{ workspaceId:
                 submit();
               }
             }}
-            placeholder="Message…"
+            placeholder={dmPartner ? `Message ${dmPartner.name}…` : channel ? `Message #${channel.name}…` : "Message…"}
             rows={1}
-            className="flex-1 resize-none rounded-lg border border-input bg-background p-2.5 text-sm outline-none focus:ring-2 focus:ring-ring"
+            className="w-full resize-none bg-transparent px-3.5 pb-1 pt-3 text-sm outline-none placeholder:text-muted-foreground"
           />
-          <Button size="icon" onClick={submit} disabled={(!content.trim() && !pendingAttachments.length) || mutation.isPending || uploading}>
-            <Send className="h-4 w-4" />
-          </Button>
+
+          <div className="flex items-center gap-0.5 px-2 pb-2 pt-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                handleFilePick(e.target.files);
+                e.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 shrink-0 text-muted-foreground"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              aria-label="Attach file"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            <div className="relative">
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 shrink-0 text-muted-foreground"
+                onClick={() => setShowEmojiPicker((v) => !v)}
+                aria-label="Add emoji"
+              >
+                <SmilePlus className="h-4 w-4" />
+              </Button>
+              {showEmojiPicker && (
+                <div className="absolute bottom-9 left-0 z-10 flex flex-wrap gap-1 rounded-lg border border-border bg-popover p-1.5 shadow-soft-lg" style={{ width: "13rem" }}>
+                  {COMPOSER_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => {
+                        setContent((c) => c + emoji);
+                        setShowEmojiPicker(false);
+                        textareaRef.current?.focus();
+                      }}
+                      className="rounded p-1 text-lg hover:bg-accent"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1" />
+
+            <Button
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={submit}
+              disabled={(!content.trim() && !pendingAttachments.length) || mutation.isPending || uploading}
+              aria-label="Send message"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
