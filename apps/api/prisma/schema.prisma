@@ -530,6 +530,7 @@ model TaskDependency {
 enum CommentChannel {
   COMMENT
   EMAIL
+  WHATSAPP
 }
 
 model Comment {
@@ -543,7 +544,10 @@ model Comment {
   // {to, cc?, bcc?, subject} — only set when channel is EMAIL. Kept as one
   // JSON blob rather than four columns since it's write-once and only ever
   // read back for display, never queried on.
-  emailMeta Json?
+  emailMeta    Json?
+  // {phone} — only set when channel is WHATSAPP. Outbound-only (sent from a
+  // task, logged here); there's no inbound webhook wiring replies back in.
+  whatsappMeta Json?
   parentId  String?
   parent    Comment?       @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
   isDeleted Boolean        @default(false)

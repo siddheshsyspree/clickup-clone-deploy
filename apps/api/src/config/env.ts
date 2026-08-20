@@ -33,6 +33,9 @@ export const env = {
   zoomClientId: process.env.ZOOM_CLIENT_ID || undefined,
   zoomClientSecret: process.env.ZOOM_CLIENT_SECRET || undefined,
 
+  whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || undefined,
+  whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || undefined,
+
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || undefined,
 
   storageProvider: process.env.STORAGE_PROVIDER ?? "local",
@@ -61,6 +64,8 @@ export const isGoogleOAuthConfigured = Boolean(
 export const isZoomConfigured = Boolean(
   env.zoomAccountId && env.zoomClientId && env.zoomClientSecret,
 );
+
+export const isWhatsAppConfigured = Boolean(env.whatsappAccessToken && env.whatsappPhoneNumberId);
 
 export const isR2Configured = Boolean(
   env.r2AccountId && env.r2AccessKeyId && env.r2SecretAccessKey && env.r2Bucket,

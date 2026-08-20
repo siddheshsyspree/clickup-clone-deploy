@@ -68,6 +68,12 @@ export const commentEmailInputSchema = z.object({
 });
 export type CommentEmailInput = z.infer<typeof commentEmailInputSchema>;
 
+export const commentWhatsAppInputSchema = z.object({
+  phone: z.string().min(6).max(20),
+  body: z.string().min(1).max(4096),
+});
+export type CommentWhatsAppInput = z.infer<typeof commentWhatsAppInputSchema>;
+
 export const createCommentSchema = z
   .object({
     content: z.any(),
@@ -75,10 +81,15 @@ export const createCommentSchema = z
     mentionedUserIds: z.array(z.string()).optional(),
     channel: z.enum(COMMENT_CHANNELS).default("COMMENT"),
     email: commentEmailInputSchema.optional(),
+    whatsapp: commentWhatsAppInputSchema.optional(),
   })
   .refine((data) => data.channel !== "EMAIL" || !!data.email, {
     message: "Email details are required when channel is EMAIL",
     path: ["email"],
+  })
+  .refine((data) => data.channel !== "WHATSAPP" || !!data.whatsapp, {
+    message: "A phone number and message are required when channel is WHATSAPP",
+    path: ["whatsapp"],
   });
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
 

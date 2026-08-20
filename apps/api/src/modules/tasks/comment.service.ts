@@ -4,6 +4,7 @@ import { logActivity } from "../../lib/activity";
 import { createNotification } from "../notifications/notification.service";
 import { emitToWorkspace } from "../../sockets";
 import { emailProvider } from "../../lib/email";
+import { whatsappProvider } from "../../lib/whatsapp";
 import type { CreateCommentInput } from "@repo/shared-types";
 
 const COMMENT_INCLUDE = {
@@ -25,6 +26,9 @@ export async function createComment(taskId: string, authorId: string, input: Cre
       html: input.email.html,
     });
   }
+  if (input.channel === "WHATSAPP" && input.whatsapp) {
+    await whatsappProvider.send(input.whatsapp.phone, input.whatsapp.body);
+  }
 
   const comment = await prisma.comment.create({
     data: {
@@ -36,6 +40,8 @@ export async function createComment(taskId: string, authorId: string, input: Cre
         input.channel === "EMAIL" && input.email
           ? { to: input.email.to, cc: input.email.cc, bcc: input.email.bcc, subject: input.email.subject }
           : undefined,
+      whatsappMeta:
+        input.channel === "WHATSAPP" && input.whatsapp ? { phone: input.whatsapp.phone } : undefined,
       parentId: input.parentId,
       mentions: input.mentionedUserIds?.length
         ? { create: input.mentionedUserIds.map((mentionedUserId) => ({ mentionedUserId })) }
