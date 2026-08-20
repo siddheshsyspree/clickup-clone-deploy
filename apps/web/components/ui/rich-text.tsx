@@ -379,7 +379,8 @@ export function RichTextComposer({
   placeholder?: string;
   submitLabel: string;
   disabled?: boolean;
-  onSubmit: (doc: RichDoc) => Promise<void> | void;
+  /** `html` is the editor's rendered output — handy for callers (e.g. sending an email) that need markup rather than the Tiptap doc. */
+  onSubmit: (doc: RichDoc, html: string) => Promise<void> | void;
 }) {
   /**
    * `editorProps` is captured when the editor is created, so a handler defined
@@ -409,7 +410,7 @@ export function RichTextComposer({
   const submit = async () => {
     if (!editor || editor.isEmpty || disabled) return;
     const doc = editor.getJSON() as RichDoc;
-    await onSubmit(doc);
+    await onSubmit(doc, editor.getHTML());
     editor.commands.clearContent();
   };
   submitRef.current = submit;

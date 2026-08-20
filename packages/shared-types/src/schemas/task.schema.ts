@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TASK_PRIORITIES, DEPENDENCY_TYPES } from "../enums";
+import { TASK_PRIORITIES, DEPENDENCY_TYPES, COMMENT_CHANNELS } from "../enums";
 
 export const createTaskSchema = z.object({
   title: z.string().min(1).max(300),
@@ -59,11 +59,27 @@ export const createDependencySchema = z.object({
 });
 export type CreateDependencyInput = z.infer<typeof createDependencySchema>;
 
-export const createCommentSchema = z.object({
-  content: z.any(),
-  parentId: z.string().optional(),
-  mentionedUserIds: z.array(z.string()).optional(),
+export const commentEmailInputSchema = z.object({
+  to: z.string().email(),
+  cc: z.array(z.string().email()).optional(),
+  bcc: z.array(z.string().email()).optional(),
+  subject: z.string().min(1).max(200),
+  html: z.string().min(1),
 });
+export type CommentEmailInput = z.infer<typeof commentEmailInputSchema>;
+
+export const createCommentSchema = z
+  .object({
+    content: z.any(),
+    parentId: z.string().optional(),
+    mentionedUserIds: z.array(z.string()).optional(),
+    channel: z.enum(COMMENT_CHANNELS).default("COMMENT"),
+    email: commentEmailInputSchema.optional(),
+  })
+  .refine((data) => data.channel !== "EMAIL" || !!data.email, {
+    message: "Email details are required when channel is EMAIL",
+    path: ["email"],
+  });
 export type CreateCommentInput = z.infer<typeof createCommentSchema>;
 
 export const createTimeEntrySchema = z.object({

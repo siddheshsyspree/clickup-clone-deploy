@@ -92,3 +92,6 @@ export type RsvpStatus = (typeof RSVP_STATUSES)[number];
 
 export const FILE_PERMISSION_LEVELS = ["VIEW", "EDIT", "MANAGE"] as const;
 export type FilePermissionLevel = (typeof FILE_PERMISSION_LEVELS)[number];
+
+export const COMMENT_CHANNELS = ["COMMENT", "EMAIL"] as const;
+export type CommentChannel = (typeof COMMENT_CHANNELS)[number];

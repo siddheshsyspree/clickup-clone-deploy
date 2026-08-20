@@ -527,18 +527,28 @@ model TaskDependency {
   @@unique([taskId, dependsOnId])
 }
 
+enum CommentChannel {
+  COMMENT
+  EMAIL
+}
+
 model Comment {
-  id        String    @id @default(cuid())
+  id        String         @id @default(cuid())
   taskId    String
-  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task      Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
   authorId  String
-  author    User      @relation(fields: [authorId], references: [id])
+  author    User           @relation(fields: [authorId], references: [id])
   content   Json
+  channel   CommentChannel @default(COMMENT)
+  // {to, cc?, bcc?, subject} — only set when channel is EMAIL. Kept as one
+  // JSON blob rather than four columns since it's write-once and only ever
+  // read back for display, never queried on.
+  emailMeta Json?
   parentId  String?
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
-  isDeleted Boolean   @default(false)
+  parent    Comment?       @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  isDeleted Boolean        @default(false)
   editedAt  DateTime?
-  createdAt DateTime  @default(now())
+  createdAt DateTime       @default(now())
 
   replies     Comment[]    @relation("CommentReplies")
   mentions    Mention[]

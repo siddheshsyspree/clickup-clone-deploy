@@ -3,6 +3,7 @@ import { NotFoundError, ForbiddenError } from "../../lib/errors";
 import { logActivity } from "../../lib/activity";
 import { createNotification } from "../notifications/notification.service";
 import { emitToWorkspace } from "../../sockets";
+import { emailProvider } from "../../lib/email";
 import type { CreateCommentInput } from "@repo/shared-types";
 
 const COMMENT_INCLUDE = {
@@ -13,11 +14,28 @@ export async function createComment(taskId: string, authorId: string, input: Cre
   const task = await prisma.task.findUnique({ where: { id: taskId }, include: { project: true } });
   if (!task) throw new NotFoundError("Task not found");
 
+  // Sent before the row is written — if delivery fails, no comment (and no
+  // false "sent" record) is created at all.
+  if (input.channel === "EMAIL" && input.email) {
+    await emailProvider.send({
+      to: input.email.to,
+      cc: input.email.cc,
+      bcc: input.email.bcc,
+      subject: input.email.subject,
+      html: input.email.html,
+    });
+  }
+
   const comment = await prisma.comment.create({
     data: {
       taskId,
       authorId,
       content: input.content,
+      channel: input.channel,
+      emailMeta:
+        input.channel === "EMAIL" && input.email
+          ? { to: input.email.to, cc: input.email.cc, bcc: input.email.bcc, subject: input.email.subject }
+          : undefined,
       parentId: input.parentId,
       mentions: input.mentionedUserIds?.length
         ? { create: input.mentionedUserIds.map((mentionedUserId) => ({ mentionedUserId })) }

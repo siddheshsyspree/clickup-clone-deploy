@@ -4,6 +4,8 @@ export interface EmailMessage {
   to: string;
   subject: string;
   html: string;
+  cc?: string[];
+  bcc?: string[];
 }
 
 export interface EmailProvider {
@@ -59,6 +61,8 @@ class ConsoleEmailProvider implements EmailProvider {
     // (+ RESEND_API_KEY, EMAIL_FROM) to send for real.
     console.log("\n──────── 📧 EMAIL (console provider) ────────");
     console.log(`To: ${message.to}`);
+    if (message.cc?.length) console.log(`Cc: ${message.cc.join(", ")}`);
+    if (message.bcc?.length) console.log(`Bcc: ${message.bcc.join(", ")}`);
     console.log(`Subject: ${message.subject}`);
     console.log(message.html);
     console.log("───────────────────────────────────────────\n");
@@ -85,6 +89,8 @@ class ResendEmailProvider implements EmailProvider {
       body: JSON.stringify({
         from: this.from,
         to: [message.to],
+        cc: message.cc?.length ? message.cc : undefined,
+        bcc: message.bcc?.length ? message.bcc : undefined,
         subject: message.subject,
         html: renderBrandedEmail(message.html),
       }),
