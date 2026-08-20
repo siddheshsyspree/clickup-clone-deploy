@@ -13,14 +13,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { PriorityIcon, priorityLabel, PRIORITY_CONFIG } from "@/components/task/priority-icon";
-import { ChecklistSection } from "@/components/task/checklist-section";
 import { CommentSection } from "@/components/task/comment-section";
 import { AssigneePicker } from "@/components/task/assignee-picker";
 import { AttachmentSection } from "@/components/task/attachment-section";
 import { StatusPicker } from "@/components/task/status-picker";
 import { TagPicker } from "@/components/task/tag-picker";
-import { DependencySection } from "@/components/task/dependency-section";
-import { TimeTrackingSection } from "@/components/task/time-tracking-section";
 import { RichTextEditor } from "@/components/ui/rich-text";
 import { useTaskDetailStore } from "@/stores/task-detail-store";
 import { getTask, updateTask, deleteTask } from "@/lib/queries/tasks";
@@ -94,14 +91,14 @@ export function TaskDetailDialog() {
 
   return (
     <Dialog open={!!openTaskId} onOpenChange={(o) => !o && close()}>
-      <DialogContent className="max-w-3xl gap-0 p-0">
+      <DialogContent className="max-w-6xl gap-0 p-0">
         {!task ? (
           <div className="flex h-96 items-center justify-center">
             <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
           </div>
         ) : (
-          <div className="grid max-h-[85vh] grid-cols-1 md:grid-cols-[1fr_260px]">
-            <div className="flex max-h-[85vh] flex-col overflow-y-auto scrollbar-thin p-6">
+          <div className="grid max-h-[90vh] grid-cols-1 md:grid-cols-[1fr_260px]">
+            <div className="flex max-h-[90vh] flex-col overflow-y-auto scrollbar-thin p-6">
               <div className="mb-3 flex items-center gap-2 text-xs font-medium text-muted-foreground">
                 <span>
                   {task.project.key}-{task.number}
@@ -127,12 +124,6 @@ export function TaskDetailDialog() {
               />
 
               <AttachmentSection task={task} onChange={invalidate} />
-              <Separator className="my-4" />
-              <ChecklistSection task={task} onChange={invalidate} />
-              <Separator className="my-4" />
-              <DependencySection task={task} onChange={invalidate} />
-              <Separator className="my-4" />
-              <TimeTrackingSection task={task} onChange={invalidate} />
               <Separator className="my-4" />
               <CommentSection task={task} />
             </div>
