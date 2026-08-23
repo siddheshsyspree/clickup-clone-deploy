@@ -35,6 +35,8 @@ export const env = {
 
   whatsappAccessToken: process.env.WHATSAPP_ACCESS_TOKEN || undefined,
   whatsappPhoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || undefined,
+  whatsappVerifyToken: process.env.WHATSAPP_VERIFY_TOKEN || undefined,
+  whatsappAppSecret: process.env.WHATSAPP_APP_SECRET || undefined,
 
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || undefined,
 

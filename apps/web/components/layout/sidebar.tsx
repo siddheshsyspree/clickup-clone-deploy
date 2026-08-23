@@ -9,6 +9,7 @@ import {
   Users2,
   Building2,
   MessagesSquare,
+  Phone,
   CalendarClock,
   Settings,
   ShieldCheck,
@@ -105,6 +106,7 @@ export function Sidebar({ workspaceId }: { workspaceId: string }) {
     { href: `${base}/clients`, icon: Building2, label: "Clients" },
     { href: `${base}/teams`, icon: Users2, label: "Teams" },
     { href: `${base}/chat`, icon: MessagesSquare, label: "Chat", badge: unreadChatCount },
+    { href: `${base}/whatsapp`, icon: Phone, label: "WhatsApp" },
     { href: `${base}/meetings`, icon: CalendarClock, label: "Meetings" },
     ...(isAdmin ? [{ href: `${base}/admin`, icon: ShieldCheck, label: "Admin" }] : []),
   ];

@@ -3,6 +3,7 @@ import { BadRequestError } from "../../lib/errors";
 import * as taskService from "./task.service";
 import * as checklistService from "./checklist.service";
 import * as commentService from "./comment.service";
+import * as whatsappService from "../whatsapp/whatsapp.service";
 
 export async function list(req: Request, res: Response) {
   res.json(await taskService.listTasks(req.params.projectId, req.query as never));
@@ -130,6 +131,12 @@ export async function listComments(req: Request, res: Response) {
 }
 export async function createComment(req: Request, res: Response) {
   res.status(201).json(await commentService.createComment(req.params.taskId, req.user!.id, req.body));
+}
+export async function getWhatsAppThread(req: Request, res: Response) {
+  res.json(await whatsappService.getThread(req.params.taskId));
+}
+export async function sendWhatsAppMessage(req: Request, res: Response) {
+  res.status(201).json(await whatsappService.sendMessage(req.params.taskId, req.user!.id, req.body));
 }
 export async function updateComment(req: Request, res: Response) {
   res.json(await commentService.updateComment(req.params.id, req.user!.id, req.body.content));

@@ -58,6 +58,11 @@ export function useSocketSync(workspaceId: string) {
     const onFileChange = () => {
       queryClient.invalidateQueries({ queryKey: ["files", workspaceId] });
     };
+    const onWhatsAppMessage = (message: { taskId: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["whatsapp", message.taskId] });
+      queryClient.invalidateQueries({ queryKey: ["task", message.taskId] });
+      queryClient.invalidateQueries({ queryKey: ["whatsapp-conversations", workspaceId] });
+    };
 
     socket.on("task:created", onTaskChange);
     socket.on("task:updated", onTaskChange);
@@ -72,6 +77,7 @@ export function useSocketSync(workspaceId: string) {
     socket.on("presence:offline", onPresence);
     socket.on("file:created", onFileChange);
     socket.on("file:deleted", onFileChange);
+    socket.on("whatsapp:message", onWhatsAppMessage);
 
     return () => {
       socket.emit("leave:workspace", workspaceId);
@@ -89,6 +95,7 @@ export function useSocketSync(workspaceId: string) {
       socket.off("presence:offline", onPresence);
       socket.off("file:created", onFileChange);
       socket.off("file:deleted", onFileChange);
+      socket.off("whatsapp:message", onWhatsAppMessage);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, workspaceId]);

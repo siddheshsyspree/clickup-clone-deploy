@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { PriorityIcon, priorityLabel, PRIORITY_CONFIG } from "@/components/task/priority-icon";
 import { CommentSection } from "@/components/task/comment-section";
+import { WhatsAppThread } from "@/components/task/whatsapp-thread";
 import { AssigneePicker } from "@/components/task/assignee-picker";
 import { AttachmentSection } from "@/components/task/attachment-section";
 import { StatusPicker } from "@/components/task/status-picker";
@@ -124,6 +125,8 @@ export function TaskDetailDialog() {
               />
 
               <AttachmentSection task={task} onChange={invalidate} />
+              <Separator className="my-4" />
+              <WhatsAppThread task={task} />
               <Separator className="my-4" />
               <CommentSection task={task} />
             </div>

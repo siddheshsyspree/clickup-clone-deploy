@@ -145,6 +145,7 @@ model User {
   attachments             Attachment[]
   timeEntries             TimeEntry[]
   activityLogs            ActivityLog[]
+  whatsappMessages        WhatsAppMessage[]
   notifications           Notification[]
   channelMemberships      ChannelMember[]
   messages                Message[]
@@ -447,17 +448,25 @@ model Task {
   createdBy       User          @relation("TaskCreatedBy", fields: [createdById], references: [id])
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  // The number a WhatsApp thread on this task is bound to — set the first
+  // time someone sends (or receives) a WhatsApp message here. Not validated
+  // against any structured "client" record since none exists; matching an
+  // inbound webhook message back to a task is a lookup against this field.
+  whatsappPhone   String?
 
-  subtasks     Task[]           @relation("TaskSubtasks")
-  assignees    TaskAssignee[]
-  taskLabels   TaskLabel[]
-  checklists   Checklist[]
-  comments     Comment[]
-  attachments  Attachment[]
-  timeEntries  TimeEntry[]
-  dependencies TaskDependency[] @relation("TaskDependencies")
-  dependents   TaskDependency[] @relation("TaskDependents")
-  activityLogs ActivityLog[]
+  subtasks         Task[]            @relation("TaskSubtasks")
+  assignees        TaskAssignee[]
+  taskLabels       TaskLabel[]
+  checklists       Checklist[]
+  comments         Comment[]
+  attachments      Attachment[]
+  timeEntries      TimeEntry[]
+  dependencies     TaskDependency[]  @relation("TaskDependencies")
+  dependents       TaskDependency[]  @relation("TaskDependents")
+  activityLogs     ActivityLog[]
+  whatsappMessages WhatsAppMessage[]
+
+  @@index([whatsappPhone])
 
   @@unique([projectId, number])
   @@index([projectId, workflowStateId])
@@ -530,7 +539,6 @@ model TaskDependency {
 enum CommentChannel {
   COMMENT
   EMAIL
-  WHATSAPP
 }
 
 model Comment {
@@ -544,10 +552,7 @@ model Comment {
   // {to, cc?, bcc?, subject} — only set when channel is EMAIL. Kept as one
   // JSON blob rather than four columns since it's write-once and only ever
   // read back for display, never queried on.
-  emailMeta    Json?
-  // {phone} — only set when channel is WHATSAPP. Outbound-only (sent from a
-  // task, logged here); there's no inbound webhook wiring replies back in.
-  whatsappMeta Json?
+  emailMeta Json?
   parentId  String?
   parent    Comment?       @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
   isDeleted Boolean        @default(false)
@@ -560,6 +565,41 @@ model Comment {
 
   @@index([taskId])
   @@index([parentId])
+}
+
+enum WhatsAppDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum WhatsAppMessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+// A real two-way chat thread, not a logged send-and-forget record like
+// Comment.emailMeta — OUTBOUND rows are written when the team sends, INBOUND
+// rows are written by the webhook when the client replies on their own
+// WhatsApp. authorId is null for INBOUND since no app user sent it.
+model WhatsAppMessage {
+  id                String                @id @default(cuid())
+  taskId            String
+  task              Task                  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  direction         WhatsAppDirection
+  phone             String
+  body              String
+  status            WhatsAppMessageStatus @default(QUEUED)
+  providerMessageId String?
+  authorId          String?
+  author            User?                 @relation(fields: [authorId], references: [id])
+  createdAt         DateTime              @default(now())
+
+  @@index([taskId])
+  @@index([phone])
+  @@index([providerMessageId])
 }
 
 model Mention {

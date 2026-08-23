@@ -38,7 +38,9 @@ class MetaWhatsAppProvider implements WhatsAppProvider {
       },
       body: JSON.stringify({
         messaging_product: "whatsapp",
-        to: to.replace(/[^\d+]/g, ""),
+        // Caller (whatsapp.service.ts) already normalizes to digits-only —
+        // Meta's API expects no leading "+".
+        to: to.replace(/\D/g, ""),
         type: "text",
         text: { body },
       }),

@@ -88,9 +88,8 @@ export interface TaskDetail extends TaskSummary {
     createdAt: string;
     editedAt: string | null;
     isDeleted: boolean;
-    channel: "COMMENT" | "EMAIL" | "WHATSAPP";
+    channel: "COMMENT" | "EMAIL";
     emailMeta: { to: string; cc?: string[]; bcc?: string[]; subject: string } | null;
-    whatsappMeta: { phone: string } | null;
     replies: Array<{ id: string; content: unknown; author: { id: string; name: string; avatarUrl: string | null }; createdAt: string }>;
   }>;
   timeEntries: TimeEntry[];

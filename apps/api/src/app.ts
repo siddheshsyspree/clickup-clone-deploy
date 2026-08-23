@@ -19,13 +19,28 @@ import { reportRouter } from "./modules/reports/report.routes";
 import { userRouter } from "./modules/users/user.routes";
 import { meetingRouter } from "./modules/meetings/meeting.routes";
 import { aiRouter } from "./modules/ai/ai.routes";
+import { whatsappWebhookRouter } from "./modules/whatsapp/webhook.routes";
+import { whatsappRouter } from "./modules/whatsapp/whatsapp.routes";
 
 configureGoogleStrategy();
 
 export const app: express.Express = express();
 
 app.use(cors({ origin: env.corsAllowAll ? true : env.corsOrigin, credentials: true }));
-app.use(express.json({ limit: "5mb" }));
+app.use(
+  express.json({
+    limit: "5mb",
+    // Meta signs the exact raw bytes it sent — stash them for the webhook
+    // route to verify against, since by the time a handler runs this
+    // middleware has already parsed the body into an object.
+    verify: (req, _res, buf) => {
+      const expressReq = req as express.Request & { rawBody?: Buffer };
+      if (expressReq.originalUrl === "/api/webhooks/whatsapp") {
+        expressReq.rawBody = buf;
+      }
+    },
+  }),
+);
 app.use(cookieParser());
 app.use(passport.initialize());
 // Uploads are deliberately not served statically. Every document leaves through
@@ -35,6 +50,12 @@ app.use(passport.initialize());
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", time: new Date().toISOString() });
 });
+
+// Mounted before any authenticated router: every one of those calls
+// `.use(authenticate)` with no path filter, so once a request reaches it,
+// it 401s regardless of whether that router has a matching route — a
+// public route mounted after them would never actually be reachable.
+app.use("/api", whatsappWebhookRouter);
 
 app.use("/api/auth", authRouter);
 app.use("/api", workspaceRouter);
@@ -50,6 +71,7 @@ app.use("/api", reportRouter);
 app.use("/api", userRouter);
 app.use("/api", meetingRouter);
 app.use("/api", aiRouter);
+app.use("/api", whatsappRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

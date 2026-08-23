@@ -10,6 +10,7 @@ import {
   createDependencySchema,
   createCommentSchema,
   createTimeEntrySchema,
+  whatsappSendInputSchema,
 } from "@repo/shared-types";
 import { authenticate } from "../../middleware/authenticate";
 import { requireProjectMember } from "../../middleware/requireRole";
@@ -155,3 +156,11 @@ taskRouter.post(
 );
 taskRouter.patch("/comments/:id", requireTaskAccessVia(viaComment, "GUEST"), asyncHandler(controller.updateComment));
 taskRouter.delete("/comments/:id", requireTaskAccessVia(viaComment, "GUEST"), asyncHandler(controller.deleteComment));
+
+taskRouter.get("/tasks/:taskId/whatsapp", requireTaskProjectAccess("GUEST"), asyncHandler(controller.getWhatsAppThread));
+taskRouter.post(
+  "/tasks/:taskId/whatsapp",
+  requireTaskProjectAccess("MEMBER"),
+  validateBody(whatsappSendInputSchema),
+  asyncHandler(controller.sendWhatsAppMessage),
+);
